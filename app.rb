@@ -8,6 +8,7 @@ set :root, File.dirname(__FILE__)
 
 
 get '/score.?:format?' do
+  cross_origin
   content_type :json
 
   url_or_slug = params[:url] || params[:github]

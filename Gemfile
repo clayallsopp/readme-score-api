@@ -1,6 +1,7 @@
 source 'https://rubygems.org'
 
 gem 'sinatra'
+gem "sinatra-cross_origin", "~> 0.3.1"
 
 gem 'readme-score', github: "clayallsopp/readme-score"
 

@@ -2,3 +2,5 @@
 .DS_Store
 .sass-cache/
 Procfile.local
+*.rdb
+gin-bin

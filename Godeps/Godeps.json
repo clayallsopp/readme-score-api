@@ -1,0 +1,24 @@
+{
+	"ImportPath": "github.com/clayallsopp/readme-score-api",
+	"GoVersion": "go1.2",
+	"Deps": [
+		{
+			"ImportPath": "github.com/codegangsta/inject",
+			"Comment": "v1.0-rc1-4-g4b81725",
+			"Rev": "4b8172520a03fa190f427bbd284db01b459bfce7"
+		},
+		{
+			"ImportPath": "github.com/garyburd/redigo/redis",
+			"Rev": "204566ad8c530fe658a939ff8d1857ad6f6012d2"
+		},
+		{
+			"ImportPath": "github.com/go-martini/martini",
+			"Comment": "v1.0-27-g6d22115",
+			"Rev": "6d22115736ff94392c11684f7cbe1a5143430ee3"
+		},
+		{
+			"ImportPath": "github.com/soveran/redisurl",
+			"Rev": "ac42ec99510b5f21d11560d316adcc5bc41f0915"
+		}
+	]
+}

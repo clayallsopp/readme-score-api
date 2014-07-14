@@ -1,1 +1,1 @@
-web: ./web
+web: readme-score-api

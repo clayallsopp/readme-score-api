@@ -8,10 +8,16 @@ import (
     "fmt"
     "strings"
     "github.com/garyburd/redigo/redis"
+    "time"
 )
 
 // Expire caches in an hour
 const CACHE_TTL = 60 * 60
+
+type Server struct {
+    Redis *redis.Conn
+    Martini *martini.ClassicMartini
+}
 
 type ScoreResponse struct {
     Score string `json:"score"`
@@ -40,7 +46,11 @@ func GetScoreErrorAsJson(url_or_slug string) []byte {
     return MarshalToJsonBytes(res)
 }
 
-func GetScore(res http.ResponseWriter, req *http.Request, params martini.Params) {
+func CacheKeyForUrlOrSlug(url_or_slug string) string{
+    return "url_or_slug:" + url_or_slug
+}
+
+func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, params martini.Params) {
     res.Header().Set("Content-Type", "application/json")
 
     query_params := req.URL.Query()
@@ -53,7 +63,7 @@ func GetScore(res http.ResponseWriter, req *http.Request, params martini.Params)
     }
     url_or_slug = param_matches[0]
 
-    score, score_error := GetScoreForUrlOrSlug(url_or_slug)
+    score, score_error := server.GetScoreForUrlOrSlug(url_or_slug)
 
     if score_error != nil {
         res.Write(GetScoreErrorAsJson(url_or_slug))
@@ -63,26 +73,20 @@ func GetScore(res http.ResponseWriter, req *http.Request, params martini.Params)
 
 }
 
-var redisConnection redis.Conn
-
-func CacheKeyForUrlOrSlug(url_or_slug string) string{
-    return "url_or_slug:" + url_or_slug
-}
-
-func GetCachedScoreForUrlOrSlug(url_or_slug string) (string, error) {
-    score, err := redis.String(redisConnection.Do("GET", CacheKeyForUrlOrSlug(url_or_slug)))
+func (server *Server) GetCachedScoreForUrlOrSlug(url_or_slug string) (string, error) {
+    score, err := redis.String((*server.Redis).Do("GET", CacheKeyForUrlOrSlug(url_or_slug)))
     return score, err
 }
 
-func CacheScoreForUrlOrSlug(score string, url_or_slug string) {
-    redisConnection.Do("SET", CacheKeyForUrlOrSlug(url_or_slug), score)
-    redisConnection.Do("EXPIRE", CacheKeyForUrlOrSlug(url_or_slug), CACHE_TTL)
+func (server *Server)  CacheScoreForUrlOrSlug(score string, url_or_slug string) {
+    (*server.Redis).Do("SET", CacheKeyForUrlOrSlug(url_or_slug), score)
+    (*server.Redis).Do("EXPIRE", CacheKeyForUrlOrSlug(url_or_slug), CACHE_TTL)
 }
 
-func GetScoreForUrlOrSlug(url_or_slug string) (string, error) {
+func (server *Server) GetScoreForUrlOrSlug(url_or_slug string) (string, error) {
     var score string
     var err error
-    score, err = GetCachedScoreForUrlOrSlug(url_or_slug)
+    score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug)
     if err != nil {
         rubyCmd := exec.Command("./get_score.rb", url_or_slug)
         var scoreOut []byte
@@ -93,20 +97,53 @@ func GetScoreForUrlOrSlug(url_or_slug string) (string, error) {
         }
         lines := strings.Split(string(scoreOut), "\n")
         score = lines[len(lines) - 2]
-        CacheScoreForUrlOrSlug(score, url_or_slug)
+        server.CacheScoreForUrlOrSlug(score, url_or_slug)
     }
 
     return score, err
 }
 
-func main() {
-    var redisError error
-    redisConnection, redisError = redis.Dial("tcp", ":6379")
-    if redisError != nil {
-        panic(redisError)
+func ConnectRedis(redisChannel chan redis.Conn) {
+    connection, redisError := redis.Dial("tcp", ":6379")
+    if connection != nil {
+        redisChannel <- connection
+    } else if redisError != nil {
+        fmt.Println(redisError)
+    } else {
+        fmt.Println("Everyting was nil?")
     }
-    defer redisConnection.Close()
+}
+
+func CreateServer(server *Server) {
     m := martini.Classic()
-    m.Get("/score(\\.(?P<format>json|html))?", GetScore)
+    m.Get("/score(\\.(?P<format>json|html))?", server.GetScore)
+    server.Martini = m
     m.Run()
+}
+
+func Start(redisChannel chan redis.Conn, retryCount int, server *Server) {
+    go ConnectRedis(redisChannel)
+    select {
+    case redisConnection := <- redisChannel:
+        server.Redis = &redisConnection
+        fmt.Println("Redis connected")
+        defer redisConnection.Close()
+        CreateServer(server)
+    case <-time.After(time.Second * 1):
+        retryCount += 1
+        if retryCount < 5 {
+            fmt.Println("Retrying Redis connection")
+            Start(redisChannel, retryCount, server)
+        } else {
+            panic("Something is going wrong")
+        }
+    }
+
+}
+
+func main() {
+    redisChannel := make(chan redis.Conn, 1)
+    retryCount := 0
+    server := Server{}
+    Start(redisChannel, retryCount, &server)
 }

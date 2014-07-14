@@ -17,6 +17,10 @@
 			"Rev": "6d22115736ff94392c11684f7cbe1a5143430ee3"
 		},
 		{
+			"ImportPath": "github.com/martini-contrib/cors",
+			"Rev": "c3837f3383e5a50b5c31ba3c27d9bb467104cd45"
+		},
+		{
 			"ImportPath": "github.com/soveran/redisurl",
 			"Rev": "ac42ec99510b5f21d11560d316adcc5bc41f0915"
 		}

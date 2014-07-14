@@ -4,3 +4,4 @@
 Procfile.local
 *.rdb
 gin-bin
+.envrc

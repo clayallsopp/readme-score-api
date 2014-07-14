@@ -105,16 +105,15 @@ func (server *Server) GetScoreForUrlOrSlug(url_or_slug string) (string, error) {
 }
 
 func ConnectRedis(redisChannel chan redis.Conn) {
-    redisAddress := os.Getenv("REDIS_SERVER")
+    redisAddress := os.Getenv("REDIS_URL")
     if redisAddress == "" {
-        redisAddress = "tcp"
-    }
-    redisPort := os.Getenv("REDIS_PORT")
-    if redisPort == "" {
-        redisPort = "6379"
+        redisAddress = os.Getenv("REDISCLOUD_URL")
+        if redisAddress == "" {
+            redisAddress = ":6379"
+        }
     }
 
-    connection, redisError := redis.Dial(redisAddress, ":" + redisPort)
+    connection, redisError := redis.Dial("tcp", redisAddress)
     if connection != nil {
         redisChannel <- connection
     } else if redisError != nil {

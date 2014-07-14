@@ -8,6 +8,7 @@ import (
     "fmt"
     "strings"
     "github.com/garyburd/redigo/redis"
+    "github.com/soveran/redisurl"
     "time"
     "os"
 )
@@ -109,11 +110,11 @@ func ConnectRedis(redisChannel chan redis.Conn) {
     if redisAddress == "" {
         redisAddress = os.Getenv("REDISCLOUD_URL")
         if redisAddress == "" {
-            redisAddress = ":6379"
+            redisAddress = "redis://localhost:6379"
         }
     }
 
-    connection, redisError := redis.Dial("tcp", redisAddress)
+    connection, redisError := redisurl.ConnectToURL(redisAddress)
     if connection != nil {
         redisChannel <- connection
     } else if redisError != nil {

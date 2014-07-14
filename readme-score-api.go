@@ -2,6 +2,7 @@ package main
 
 import (
     "github.com/go-martini/martini"
+    "github.com/martini-contrib/cors"
     "net/http"
     "encoding/json"
     "os/exec"
@@ -126,6 +127,11 @@ func ConnectRedis(redisChannel chan redis.Conn) {
 
 func CreateServer(server *Server) {
     m := martini.Classic()
+    m.Use(cors.Allow(&cors.Options{
+        AllowOrigins:     []string{"*"},
+        AllowMethods:     []string{"GET"},
+        AllowHeaders:     []string{"Origin"},
+    }))
     m.Get("/score(\\.(?P<format>json|html))?", server.GetScore)
     server.Martini = m
     m.Run()

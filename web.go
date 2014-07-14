@@ -9,6 +9,7 @@ import (
     "strings"
     "github.com/garyburd/redigo/redis"
     "time"
+    "os"
 )
 
 // Expire caches in an hour
@@ -104,7 +105,16 @@ func (server *Server) GetScoreForUrlOrSlug(url_or_slug string) (string, error) {
 }
 
 func ConnectRedis(redisChannel chan redis.Conn) {
-    connection, redisError := redis.Dial("tcp", ":6379")
+    redisAddress := os.Getenv("REDIS_SERVER")
+    if redisAddress == "" {
+        redisAddress = "tcp"
+    }
+    redisPort := os.Getenv("REDIS_PORT")
+    if redisPort == "" {
+        redisPort = "6379"
+    }
+
+    connection, redisError := redis.Dial(redisAddress, ":" + redisPort)
     if connection != nil {
         redisChannel <- connection
     } else if redisError != nil {

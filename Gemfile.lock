@@ -1,6 +1,6 @@
 GIT
   remote: git://github.com/clayallsopp/readme-score.git
-  revision: 671c59008b0f6dc2a469f6d1d2d8c11fffca4554
+  revision: 849e8b9cd0416e3ce4ea8ce35309d59bd8532e11
   specs:
     readme-score (0.0.1)
       nokogiri (>= 1.6.0)

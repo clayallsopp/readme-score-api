@@ -22,9 +22,15 @@ type Server struct {
     Martini *martini.ClassicMartini
 }
 
+type Score struct {
+    TotalScore int `json:"total_score"`
+    Breakdown map[string]int `json:"breakdown"`
+}
+
 type ScoreResponse struct {
-    Score string `json:"score"`
+    Score int `json:"score"`
     URL string `json:"url"`
+    Breakdown map[string]int `json:"breakdown"`
 }
 
 type ErrorResponse struct {
@@ -36,9 +42,10 @@ func MarshalToJsonBytes(res interface{}) []byte {
     return ([]byte(resAsJson))
 }
 
-func GetScoreResponseAsJson(score string, url_or_slug string) []byte {
+func GetScoreResponseAsJson(score Score, url_or_slug string) []byte {
     res := &ScoreResponse{
-        Score:   score,
+        Score:   score.TotalScore,
+        Breakdown: score.Breakdown,
         URL: url_or_slug}
     return MarshalToJsonBytes(res)
 }
@@ -49,8 +56,8 @@ func GetScoreErrorAsJson(url_or_slug string) []byte {
     return MarshalToJsonBytes(res)
 }
 
-func CacheKeyForUrlOrSlug(url_or_slug string) string{
-    return "url_or_slug:" + url_or_slug
+func CacheKeyForUrlOrSlug(url_or_slug string, human_arg string) string{
+    return "url_or_slug_v2:" + url_or_slug + ":" + human_arg
 }
 
 func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, params martini.Params) {
@@ -58,49 +65,70 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 
     query_params := req.URL.Query()
 
-    var url_or_slug string
+    url_or_slug := ""
     var param_matches []string
-    var ok bool
+    ok := false
+    human_breakdown := false
     if param_matches,ok = query_params["url"]; !ok {
         param_matches = query_params["github"]
     }
     url_or_slug = param_matches[0]
 
-    score, score_error := server.GetScoreForUrlOrSlug(url_or_slug)
+    if param_matches, ok = query_params["human_breakdown"]; ok {
+        human_breakdown = param_matches[0] == "true"
+    }
 
-    if score_error != nil {
+    score, _ := server.GetScoreForUrlOrSlug(url_or_slug, human_breakdown)
+
+    if score == nil {
         res.Write(GetScoreErrorAsJson(url_or_slug))
     } else {
-        res.Write(GetScoreResponseAsJson(score, url_or_slug))
+        res.Write(GetScoreResponseAsJson(*score, url_or_slug))
     }
 
 }
 
-func (server *Server) GetCachedScoreForUrlOrSlug(url_or_slug string) (string, error) {
-    score, err := redis.String((*server.Redis).Do("GET", CacheKeyForUrlOrSlug(url_or_slug)))
+func (server *Server) GetCachedScoreForUrlOrSlug(url_or_slug string, human_arg string) (*Score, error) {
+    var score *Score;
+    scoreJson, err := redis.String((*server.Redis).Do("GET", CacheKeyForUrlOrSlug(url_or_slug, human_arg)))
+    if scoreJson != "" {
+        score = &Score{}
+        err := json.Unmarshal([]byte(scoreJson), &score)
+        if err != nil {
+            return nil, err
+        }
+    }
     return score, err
 }
 
-func (server *Server)  CacheScoreForUrlOrSlug(score string, url_or_slug string) {
-    (*server.Redis).Do("SET", CacheKeyForUrlOrSlug(url_or_slug), score)
-    (*server.Redis).Do("EXPIRE", CacheKeyForUrlOrSlug(url_or_slug), CACHE_TTL)
+func (server *Server)  CacheScoreForUrlOrSlug(scoreJson string, url_or_slug string, human_arg string) {
+    (*server.Redis).Do("SET", CacheKeyForUrlOrSlug(url_or_slug, human_arg), scoreJson)
+    (*server.Redis).Do("EXPIRE", CacheKeyForUrlOrSlug(url_or_slug, human_arg), CACHE_TTL)
 }
 
-func (server *Server) GetScoreForUrlOrSlug(url_or_slug string) (string, error) {
-    var score string
+func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, human_breakdown bool) (*Score, error) {
+    var score *Score
     var err error
-    score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug)
+    humanArg := "false"
+    if human_breakdown {
+        humanArg = "true"
+    }
+    score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug, humanArg)
     if err != nil {
-        rubyCmd := exec.Command("./get_score.rb", url_or_slug)
+        rubyCmd := exec.Command("./get_score.rb", url_or_slug, humanArg)
         var scoreOut []byte
         scoreOut, err = rubyCmd.Output()
         if err != nil {
-            fmt.Println(err)
-            return "", err
+            return nil, err
         }
         lines := strings.Split(string(scoreOut), "\n")
-        score = lines[len(lines) - 2]
-        server.CacheScoreForUrlOrSlug(score, url_or_slug)
+        scoreJson := lines[len(lines) - 2]
+        server.CacheScoreForUrlOrSlug(scoreJson, url_or_slug, humanArg)
+        score = &Score{}
+        err = json.Unmarshal([]byte(scoreJson), &score)
+        if err != nil {
+            return nil, err
+        }
     }
 
     return score, err

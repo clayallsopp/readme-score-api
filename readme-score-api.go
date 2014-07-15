@@ -57,7 +57,7 @@ func GetScoreErrorAsJson(url_or_slug string) []byte {
 }
 
 func CacheKeyForUrlOrSlug(url_or_slug string, human_arg string) string{
-    return "url_or_slug_v2:" + url_or_slug + ":" + human_arg
+    return "url_or_slug_v3:" + url_or_slug + ":" + human_arg
 }
 
 func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, params martini.Params) {

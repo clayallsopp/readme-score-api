@@ -23,14 +23,14 @@ type Server struct {
 }
 
 type Score struct {
-    TotalScore int `json:"total_score"`
-    Breakdown map[string][]int `json:"breakdown"`
+    TotalScore float32 `json:"total_score"`
+    Breakdown map[string][]float32 `json:"breakdown"`
 }
 
 type ScoreResponse struct {
-    Score int `json:"score"`
+    Score float32 `json:"score"`
     URL string `json:"url"`
-    Breakdown map[string][]int `json:"breakdown"`
+    Breakdown map[string][]float32 `json:"breakdown"`
 }
 
 type ErrorResponse struct {

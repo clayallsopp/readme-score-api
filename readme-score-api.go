@@ -26,11 +26,18 @@ type Server struct {
 }
 
 type Score struct {
-	TotalScore float32              `json:"total_score"`
-	Breakdown  map[string][]float32 `json:"breakdown"`
+	TotalScore     float32              `json:"total_score"`
+	Breakdown      map[string]float32   `json:"breakdown"`
+	HumanBreakdown map[string][]float32 `json:"human_breakdown"`
 }
 
 type ScoreResponse struct {
+	Score     float32            `json:"score"`
+	URL       string             `json:"url"`
+	Breakdown map[string]float32 `json:"breakdown"`
+}
+
+type HumanScoreResponse struct {
 	Score     float32              `json:"score"`
 	URL       string               `json:"url"`
 	Breakdown map[string][]float32 `json:"breakdown"`
@@ -46,10 +53,20 @@ func MarshalToJsonBytes(res interface{}) []byte {
 }
 
 func GetScoreResponseAsJson(score Score, url_or_slug string) []byte {
-	res := &ScoreResponse{
-		Score:     score.TotalScore,
-		Breakdown: score.Breakdown,
-		URL:       url_or_slug}
+	var res interface{}
+
+	if score.Breakdown != nil {
+		res = &ScoreResponse{
+			Score:     score.TotalScore,
+			Breakdown: score.Breakdown,
+			URL:       url_or_slug}
+	} else {
+		res = &HumanScoreResponse{
+			Score:     score.TotalScore,
+			Breakdown: score.HumanBreakdown,
+			URL:       url_or_slug}
+	}
+
 	return MarshalToJsonBytes(res)
 }
 
@@ -63,30 +80,25 @@ func (score Score) AsColor() string {
 	return "#2ECC71"
 }
 
-var score_template = ""
+var score_template_string = ""
+var score_template = template.New("score template")
 
 func GetScoreResponseAsSVG(score Score, url_or_slug string) []byte {
 	var doc bytes.Buffer
 	var err error
 
-	if score_template == "" {
-		score_template_bytes, err := ioutil.ReadFile("./templates/score.svg")
-		if err != nil {
-			return []byte("template error")
+	if score_template_string == "" {
+		var score_template_bytes []byte
+		if score_template_bytes, err = ioutil.ReadFile("./templates/score.svg"); err == nil {
+			score_template_string = string(score_template_bytes)
 		}
-		score_template = string(score_template_bytes)
+		score_template, err = score_template.Parse(score_template_string)
 	}
 
-	t := template.New("score template")
-	fmt.Println(score.AsColor())
-	t, err = t.Parse(score_template)
-	if err != nil {
-		panic(err)
+	if err == nil {
+		err = score_template.Execute(&doc, score)
 	}
-	err = t.Execute(&doc, score)
-	if err != nil {
-		panic(err)
-	}
+	HandleError(err)
 
 	return doc.Bytes()
 }
@@ -95,11 +107,11 @@ var error_template = ""
 
 func GetScoreErrorAsSVG() []byte {
 	if error_template == "" {
-		error_template_bytes, err := ioutil.ReadFile("./templates/error.svg")
-		if err != nil {
-			return ([]byte("template error"))
+		if error_template_bytes, err := ioutil.ReadFile("./templates/error.svg"); err != nil {
+			HandleError(err)
+		} else {
+			error_template = string(error_template_bytes)
 		}
-		error_template = string(error_template_bytes)
 	}
 
 	return ([]byte(error_template))
@@ -132,7 +144,8 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 		human_breakdown = param_matches[0] == "true"
 	}
 
-	score, _ := server.GetScoreForUrlOrSlug(url_or_slug, human_breakdown)
+	score, err := server.GetScoreForUrlOrSlug(url_or_slug, human_breakdown)
+	HandleError(err)
 
 	if score == nil {
 		if format == "svg" {
@@ -159,11 +172,11 @@ func (server *Server) GetCachedScoreForUrlOrSlug(url_or_slug string, human_arg s
 	scoreJson, err := redis.String((*server.Redis).Do("GET", CacheKeyForUrlOrSlug(url_or_slug, human_arg)))
 	if scoreJson != "" {
 		score = &Score{}
-		err := json.Unmarshal([]byte(scoreJson), &score)
-		if err != nil {
-			return nil, err
+		if err = json.Unmarshal([]byte(scoreJson), &score); err != nil {
+			score = nil
 		}
 	}
+
 	return score, err
 }
 
@@ -179,21 +192,17 @@ func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, human_breakdown b
 	if human_breakdown {
 		humanArg = "true"
 	}
-	score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug, humanArg)
-	if err != nil {
+	if score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug, humanArg); err != nil {
 		rubyCmd := exec.Command("./get_score.rb", url_or_slug, humanArg)
 		var scoreOut []byte
-		scoreOut, err = rubyCmd.Output()
-		if err != nil {
-			return nil, err
-		}
-		lines := strings.Split(string(scoreOut), "\n")
-		scoreJson := lines[len(lines)-2]
-		server.CacheScoreForUrlOrSlug(scoreJson, url_or_slug, humanArg)
-		score = &Score{}
-		err = json.Unmarshal([]byte(scoreJson), &score)
-		if err != nil {
-			return nil, err
+		if scoreOut, err = rubyCmd.Output(); err == nil {
+			lines := strings.Split(string(scoreOut), "\n")
+			scoreJson := lines[len(lines)-2]
+			server.CacheScoreForUrlOrSlug(scoreJson, url_or_slug, humanArg)
+			score = &Score{}
+			if err = json.Unmarshal([]byte(scoreJson), &score); err != nil {
+				score = nil
+			}
 		}
 	}
 

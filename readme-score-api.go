@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -147,7 +148,8 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 	if format == "svg" {
 		res.Header().Set("Content-Type", "image/svg+xml")
 		res.Header().Set("Cache-Control", "no-cache")
-
+	} else if format == "txt" {
+		res.Header().Set("Content-Type", "text/plain")
 	} else {
 		res.Header().Set("Content-Type", "application/json")
 	}
@@ -174,12 +176,16 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 	if score == nil {
 		if format == "svg" {
 			WriteSVGWithETag(res, GetScoreErrorAsSVG())
+		} else if format == "txt" {
+			res.Write([]byte("error"))
 		} else {
 			res.Write(GetScoreErrorAsJson(url_or_slug))
 		}
 	} else {
 		if format == "svg" {
 			WriteSVGWithETag(res, GetScoreResponseAsSVG(*score, url_or_slug))
+		} else if format == "txt" {
+			res.Write([]byte(strconv.Itoa(int(score.TotalScore))))
 		} else {
 			res.Write(GetScoreResponseAsJson(*score, url_or_slug))
 		}
@@ -255,7 +261,7 @@ func CreateServer(server *Server) {
 		AllowMethods: []string{"GET"},
 		AllowHeaders: []string{"Origin"},
 	}))
-	m.Get("/score(\\.(?P<format>json|html|svg))?", server.GetScore)
+	m.Get("/score(\\.(?P<format>json|html|svg|txt))?", server.GetScore)
 	server.Martini = m
 	m.Run()
 }

@@ -28,6 +28,7 @@ func (server *Server) RedisAddress() string {
 
 func (server *Server) CreatePool() {
 	server.Pool = &redis.Pool{
+		MaxActive:   10,
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {

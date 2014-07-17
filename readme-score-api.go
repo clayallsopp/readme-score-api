@@ -8,27 +8,18 @@ import (
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/go-martini/martini"
-	"github.com/martini-contrib/cors"
-	"github.com/soveran/redisurl"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"text/template"
-	"time"
 )
 
 // Expire caches in an hour
 const CACHE_TTL = 60 * 60
-
-type Server struct {
-	Redis   *redis.Conn
-	Martini *martini.ClassicMartini
-}
 
 type Score struct {
 	TotalScore     float32              `json:"total_score"`
@@ -213,7 +204,7 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 
 func (server *Server) GetCachedScoreForUrlOrSlug(url_or_slug string) (*Score, error) {
 	var score *Score
-	scoreJson, err := redis.String((*server.Redis).Do("GET", CacheKeyForUrlOrSlug(url_or_slug)))
+	scoreJson, err := redis.String(server.Redis("GET", CacheKeyForUrlOrSlug(url_or_slug)))
 	if scoreJson != "" {
 		score = &Score{}
 		if err = json.Unmarshal([]byte(scoreJson), &score); err != nil {
@@ -225,8 +216,8 @@ func (server *Server) GetCachedScoreForUrlOrSlug(url_or_slug string) (*Score, er
 }
 
 func (server *Server) CacheScoreForUrlOrSlug(scoreJson string, url_or_slug string) {
-	(*server.Redis).Do("SET", CacheKeyForUrlOrSlug(url_or_slug), scoreJson)
-	(*server.Redis).Do("EXPIRE", CacheKeyForUrlOrSlug(url_or_slug), CACHE_TTL)
+	server.Redis("SET", CacheKeyForUrlOrSlug(url_or_slug), scoreJson)
+	server.Redis("EXPIRE", CacheKeyForUrlOrSlug(url_or_slug), CACHE_TTL)
 }
 
 func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, force bool) (*Score, error) {
@@ -251,61 +242,8 @@ func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, force bool) (*Sco
 	return score, err
 }
 
-func ConnectRedis(redisChannel chan redis.Conn) {
-	redisAddress := os.Getenv("REDIS_URL")
-	if redisAddress == "" {
-		redisAddress = os.Getenv("REDISCLOUD_URL")
-		if redisAddress == "" {
-			redisAddress = "redis://localhost:6379"
-		}
-	}
-
-	connection, redisError := redisurl.ConnectToURL(redisAddress)
-	if connection != nil {
-		redisChannel <- connection
-	} else if redisError != nil {
-		fmt.Println(redisError)
-	} else {
-		fmt.Println("Everyting was nil?")
-	}
-}
-
-func CreateServer(server *Server) {
-	m := martini.Classic()
-	m.Use(cors.Allow(&cors.Options{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET"},
-		ExposeHeaders:    []string{"Content-Type, Cache-Control, Expires, Etag, Last-Modified"},
-		AllowCredentials: true,
-	}))
-	m.Get("/score(\\.(?P<format>json|html|svg|txt))?", server.GetScore)
-	server.Martini = m
-	m.Run()
-}
-
-func Start(redisChannel chan redis.Conn, retryCount int, server *Server) {
-	go ConnectRedis(redisChannel)
-	select {
-	case redisConnection := <-redisChannel:
-		server.Redis = &redisConnection
-		fmt.Println("Redis connected")
-		defer redisConnection.Close()
-		CreateServer(server)
-	case <-time.After(time.Second * 1):
-		retryCount += 1
-		if retryCount < 5 {
-			fmt.Println("Retrying Redis connection")
-			Start(redisChannel, retryCount, server)
-		} else {
-			panic("Something is going wrong")
-		}
-	}
-
-}
-
 func main() {
-	redisChannel := make(chan redis.Conn, 1)
-	retryCount := 0
-	server := Server{}
-	Start(redisChannel, retryCount, &server)
+	server := &Server{}
+	fmt.Printf("%p\n", &(*server))
+	server.Start()
 }

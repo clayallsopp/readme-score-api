@@ -11,11 +11,7 @@ url_or_slug = ARGV[0]
 human_breakdown = ARGV[1].to_s == "true"
 document = ReadmeScore.document(url_or_slug)
 score = document.score
-breakdown = human_breakdown ? score.human_breakdown : score.breakdown
 rep = {total_score: score.total_score}
-if human_breakdown
-  rep[:human_breakdown] = score.human_breakdown
-else
-  rep[:breakdown] = score.breakdown
-end
+rep[:human_breakdown] = score.human_breakdown
+rep[:breakdown] = score.breakdown
 puts(rep.to_json)

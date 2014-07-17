@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/go-martini/martini"
@@ -129,22 +130,28 @@ func CacheKeyForUrlOrSlug(url_or_slug string, human_arg string) string {
 
 func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, params martini.Params) {
 	query_params := req.URL.Query()
-
 	url_or_slug := ""
-	var param_matches []string
 	ok := false
 	human_breakdown := false
 	format := params["format"]
+	var param_matches []string
+	var score *Score
+	var err error
+
 	if param_matches, ok = query_params["url"]; !ok {
 		param_matches = query_params["github"]
 	}
-	url_or_slug = param_matches[0]
+	if len(param_matches) == 0 {
+		err = errors.New("No value for :url or :github query parameter")
+	} else {
+		url_or_slug = param_matches[0]
 
-	if param_matches, ok = query_params["human_breakdown"]; ok {
-		human_breakdown = param_matches[0] == "true"
+		if param_matches, ok = query_params["human_breakdown"]; ok {
+			human_breakdown = param_matches[0] == "true"
+		}
+
+		score, err = server.GetScoreForUrlOrSlug(url_or_slug, human_breakdown)
 	}
-
-	score, err := server.GetScoreForUrlOrSlug(url_or_slug, human_breakdown)
 	HandleError(err)
 
 	if score == nil {

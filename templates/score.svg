@@ -1,26 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="80px" height="18px" viewBox="0 0 80 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
-    <!-- Generator: Sketch 3.0.3 (7891) - http://www.bohemiancoding.com/sketch -->
-    <title>ScoreMe Badge</title>
-    <desc>Created with Sketch.</desc>
-    <defs>
-        <rect id="path-1" x="0" y="0" width="80" height="18" rx="3"></rect>
-    </defs>
-    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
-        <g id="Desktop" sketch:type="MSArtboardGroup" transform="translate(-452.000000, -1325.000000)">
-            <g id="green-badge" sketch:type="MSLayerGroup" transform="translate(452.000000, 1325.000000)">
-                <mask id="mask-2" sketch:name="Rectangle 6" fill="white">
-                    <use xlink:href="#path-1"></use>
-                </mask>
-                <use id="Rectangle-6" fill="{{ .AsColor }}" sketch:type="MSShapeGroup" xlink:href="#path-1"></use>
-                <rect id="Rectangle-7" fill="#34495E" sketch:type="MSShapeGroup" mask="url(#mask-2)" x="25" y="0" width="55" height="18"></rect>
-                <text id="{{.TotalScore}}" sketch:type="MSTextLayer" mask="url(#mask-2)" font-family="'Brandon Grotesque', Avenir, 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, 'Lucida Grande', sans-serif" font-size="12" font-weight="normal" fill="#FFFFFF">
-                    <tspan x="6" y="13">{{.TotalScore}}</tspan>
-                </text>
-                <text id="ScoreMe" sketch:type="MSTextLayer" mask="url(#mask-2)" font-family="'Brandon Grotesque', Avenir, 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, 'Lucida Grande', sans-serif" font-size="12" font-weight="normal" fill="#FFFFFF">
-                    <tspan x="30" y="13">ScoreMe</tspan>
-                </text>
-            </g>
-        </g>
-    </g>
+<svg width="80px" height="18px" viewBox="0 0 80 18" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <rect rx="3" width="80" height="18" fill="{{ .AsColor }}"/>
+    <rect rx="3" x="25" width="55" height="18" fill="#34495E"/>
+    <path fill="#34495E" d="M25 0h4v18h-4z"/>
+    <text x="6" y="13" id="Err" font-family="'Brandon Grotesque', Avenir, 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, 'Lucida Grande', sans-serif" font-size="12" font-weight="normal" fill="#FFFFFF">
+        <tspan>{{.TotalScore}}</tspan>
+    </text>
+    <text x="31" y="13" id="ScoreMe" font-family="'Brandon Grotesque', Avenir, 'HelveticaNeue-Light', 'Helvetica Neue Light', 'Helvetica Neue', Helvetica, Arial, 'Lucida Grande', sans-serif" font-size="12" font-weight="normal" fill="#FFFFFF">
+        <tspan >ScoreMe</tspan>
+    </text>
 </svg>
+

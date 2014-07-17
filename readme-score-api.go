@@ -84,10 +84,10 @@ func (score Score) AsColor() string {
 	return "#2ECC71"
 }
 
-var score_template_string = ""
-var score_template = template.New("score template")
+func GetScoreResponseAsSVG(score interface{}) []byte {
+	var score_template_string = ""
+	var score_template = template.New("score template")
 
-func GetScoreResponseAsSVG(score Score, url_or_slug string) []byte {
 	var doc bytes.Buffer
 	var err error
 
@@ -109,16 +109,16 @@ func GetScoreResponseAsSVG(score Score, url_or_slug string) []byte {
 
 var error_template = ""
 
-func GetScoreErrorAsSVG() []byte {
-	if error_template == "" {
-		if error_template_bytes, err := ioutil.ReadFile("./templates/error.svg"); err != nil {
-			HandleError(err)
-		} else {
-			error_template = string(error_template_bytes)
-		}
-	}
+type ErrorScore struct {
+	TotalScore string
+	AsColor    string
+}
 
-	return ([]byte(error_template))
+func GetScoreErrorAsSVG() []byte {
+	return GetScoreResponseAsSVG(&ErrorScore{
+		TotalScore: "Err",
+		AsColor:    "#838383",
+	})
 }
 
 func GetScoreErrorAsJson(url_or_slug string) []byte {
@@ -188,7 +188,7 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 		}
 	} else {
 		if format == "svg" {
-			WriteSVGWithETag(res, GetScoreResponseAsSVG(*score, url_or_slug))
+			WriteSVGWithETag(res, GetScoreResponseAsSVG(*score))
 		} else if format == "txt" {
 			res.Write([]byte(strconv.Itoa(int(score.TotalScore))))
 		} else {

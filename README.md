@@ -1,4 +1,4 @@
-# readme-score-api [![Readme Score](http://readme-score-api.herokuapp.com/score.svg?url=clayallsopp/readme-score-api)](http://clayallsopp.github.io/readme-score?url=clayallsopp/readme-score-api)
+# readme-score-api [![Readme Score](http://readme-score-api.herokuapp.com/score.svg?url=clayallsopp/readme-score-api&bust=true)](http://clayallsopp.github.io/readme-score?url=clayallsopp/readme-score-api)
 
 An HTTP API for [readme-score](http://github.com/clayallsopp/readme-score)
 

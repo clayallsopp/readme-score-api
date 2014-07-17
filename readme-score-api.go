@@ -144,6 +144,7 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 	url_or_slug := ""
 	ok := false
 	human_breakdown := false
+	hit_cache := true
 	format := params["format"]
 	if format == "svg" {
 		res.Header().Set("Content-Type", "image/svg+xml")
@@ -169,7 +170,11 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 			human_breakdown = param_matches[0] == "true"
 		}
 
-		score, err = server.GetScoreForUrlOrSlug(url_or_slug, human_breakdown)
+		if param_matches, ok = query_params["force"]; ok {
+			hit_cache = false
+		}
+
+		score, err = server.GetScoreForUrlOrSlug(url_or_slug, human_breakdown, hit_cache)
 	}
 	HandleError(err)
 
@@ -211,14 +216,14 @@ func (server *Server) CacheScoreForUrlOrSlug(scoreJson string, url_or_slug strin
 	(*server.Redis).Do("EXPIRE", CacheKeyForUrlOrSlug(url_or_slug, human_arg), CACHE_TTL)
 }
 
-func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, human_breakdown bool) (*Score, error) {
+func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, human_breakdown bool, hit_cache bool) (*Score, error) {
 	var score *Score
 	var err error
 	humanArg := "false"
 	if human_breakdown {
 		humanArg = "true"
 	}
-	if score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug, humanArg); err != nil {
+	if score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug, humanArg); err != nil || !hit_cache {
 		rubyCmd := exec.Command("./get_score.rb", url_or_slug, humanArg)
 		var scoreOut []byte
 		if scoreOut, err = rubyCmd.Output(); err == nil {

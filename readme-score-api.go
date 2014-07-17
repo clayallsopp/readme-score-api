@@ -47,6 +47,13 @@ type HumanScoreResponse struct {
 	Breakdown map[string][]float32 `json:"breakdown"`
 }
 
+type ScoreSVG struct {
+	ThreeDigitLayout  bool
+	SingleDigitLayout bool
+	Value             string
+	Color             string
+}
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
@@ -84,7 +91,16 @@ func (score Score) AsColor() string {
 	return "#2ECC71"
 }
 
-func GetScoreResponseAsSVG(score interface{}) []byte {
+func (score Score) AsScoreTemplate() ScoreSVG {
+	return ScoreSVG{
+		ThreeDigitLayout:  score.TotalScore >= 100,
+		SingleDigitLayout: score.TotalScore < 10,
+		Value:             strconv.Itoa(int(score.TotalScore)),
+		Color:             score.AsColor(),
+	}
+}
+
+func GetScoreResponseAsSVG(score_svg ScoreSVG) []byte {
 	var score_template_string = ""
 	var score_template = template.New("score template")
 
@@ -100,24 +116,17 @@ func GetScoreResponseAsSVG(score interface{}) []byte {
 	}
 
 	if err == nil {
-		err = score_template.Execute(&doc, score)
+		err = score_template.Execute(&doc, score_svg)
 	}
 	HandleError(err)
 
 	return doc.Bytes()
 }
 
-var error_template = ""
-
-type ErrorScore struct {
-	TotalScore string
-	AsColor    string
-}
-
 func GetScoreErrorAsSVG() []byte {
-	return GetScoreResponseAsSVG(&ErrorScore{
-		TotalScore: "Err",
-		AsColor:    "#838383",
+	return GetScoreResponseAsSVG(ScoreSVG{
+		Value: "Err",
+		Color: "#838383",
 	})
 }
 
@@ -163,7 +172,9 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 	}
 	if len(param_matches) == 0 {
 		err = errors.New("No value for :url or :github query parameter")
-	} else {
+	}
+
+	if err == nil {
 		url_or_slug = param_matches[0]
 
 		if param_matches, ok = query_params["human_breakdown"]; ok {
@@ -175,6 +186,7 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 		}
 
 		score, err = server.GetScoreForUrlOrSlug(url_or_slug, hit_cache)
+
 	}
 	HandleError(err)
 
@@ -188,7 +200,7 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 		}
 	} else {
 		if format == "svg" {
-			WriteSVGWithETag(res, GetScoreResponseAsSVG(*score))
+			WriteSVGWithETag(res, GetScoreResponseAsSVG(score.AsScoreTemplate()))
 		} else if format == "txt" {
 			res.Write([]byte(strconv.Itoa(int(score.TotalScore))))
 		} else {

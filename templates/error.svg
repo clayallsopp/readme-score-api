@@ -15,7 +15,7 @@
                 <use id="Rectangle-6" fill="#838383" sketch:type="MSShapeGroup" xlink:href="#path-1"></use>
                 <rect id="Rectangle-7" fill="#34495E" sketch:type="MSShapeGroup" mask="url(#mask-2)" x="25" y="0" width="48" height="15"></rect>
                 <text id="Error" sketch:type="MSTextLayer" mask="url(#mask-2)" font-family="Brandon Grotesque" font-size="10" font-weight="normal" fill="#FFFFFF">
-                    <tspan x="7" y="11">Error</tspan>
+                    <tspan x="7" y="11">Err</tspan>
                 </text>
                 <text id="ScoreMe" sketch:type="MSTextLayer" mask="url(#mask-2)" font-family="Brandon Grotesque" font-size="10" font-weight="normal" fill="#FFFFFF">
                     <tspan x="31" y="11">ScoreMe</tspan>

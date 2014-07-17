@@ -154,7 +154,7 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 	url_or_slug := ""
 	ok := false
 	human_breakdown := false
-	hit_cache := true
+	force := false
 	format := params["format"]
 	if format == "svg" {
 		res.Header().Set("Content-Type", "image/svg+xml")
@@ -183,10 +183,10 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 		}
 
 		if param_matches, ok = query_params["force"]; ok {
-			hit_cache = false
+			force = true
 		}
 
-		score, err = server.GetScoreForUrlOrSlug(url_or_slug, hit_cache)
+		score, err = server.GetScoreForUrlOrSlug(url_or_slug, force)
 
 	}
 	HandleError(err)
@@ -229,11 +229,11 @@ func (server *Server) CacheScoreForUrlOrSlug(scoreJson string, url_or_slug strin
 	(*server.Redis).Do("EXPIRE", CacheKeyForUrlOrSlug(url_or_slug), CACHE_TTL)
 }
 
-func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, hit_cache bool) (*Score, error) {
+func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, force bool) (*Score, error) {
 	var score *Score
 	var err error
-	if score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug); err != nil || !hit_cache {
-		log.Printf("Cache miss for %s (forced? %t)", url_or_slug, hit_cache)
+	if score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug); err != nil || force {
+		log.Printf("Cache miss for %s (forced? %t)", url_or_slug, force)
 		log.Print(err)
 		rubyCmd := exec.Command("./get_score.rb", url_or_slug)
 		var scoreOut []byte

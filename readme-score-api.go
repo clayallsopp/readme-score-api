@@ -134,7 +134,7 @@ func CacheKeyForUrlOrSlug(url_or_slug string, human_arg string) string {
 func WriteSVGWithETag(res http.ResponseWriter, body []byte) {
 	hash := md5.New()
 	io.WriteString(hash, string(body))
-	etag := fmt.Sprintf("%x", hash.Sum(nil))
+	etag := fmt.Sprintf("\"%x\"", hash.Sum(nil))
 	res.Header().Set("ETag", etag)
 	res.Write(body)
 }
@@ -148,7 +148,7 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 	format := params["format"]
 	if format == "svg" {
 		res.Header().Set("Content-Type", "image/svg+xml")
-		res.Header().Set("Cache-Control", "no-cache")
+		res.Header().Set("Cache-Control", "no-cache, private")
 	} else if format == "txt" {
 		res.Header().Set("Content-Type", "text/plain")
 	} else {
@@ -262,9 +262,10 @@ func ConnectRedis(redisChannel chan redis.Conn) {
 func CreateServer(server *Server) {
 	m := martini.Classic()
 	m.Use(cors.Allow(&cors.Options{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"GET"},
-		AllowHeaders: []string{"Origin"},
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET"},
+		ExposeHeaders:    []string{"Content-Type, Cache-Control, Expires, Etag, Last-Modified"},
+		AllowCredentials: true,
 	}))
 	m.Get("/score(\\.(?P<format>json|html|svg|txt))?", server.GetScore)
 	server.Martini = m

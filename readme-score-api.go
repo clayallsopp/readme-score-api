@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/go-martini/martini"
 	"github.com/martini-contrib/cors"
 	"github.com/soveran/redisurl"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -128,12 +130,27 @@ func CacheKeyForUrlOrSlug(url_or_slug string, human_arg string) string {
 	return "url_or_slug_v3:" + url_or_slug + ":" + human_arg
 }
 
+func WriteSVGWithETag(res http.ResponseWriter, body []byte) {
+	hash := md5.New()
+	io.WriteString(hash, string(body))
+	etag := fmt.Sprintf("%x", hash.Sum(nil))
+	res.Header().Set("ETag", etag)
+	res.Write(body)
+}
+
 func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, params martini.Params) {
 	query_params := req.URL.Query()
 	url_or_slug := ""
 	ok := false
 	human_breakdown := false
 	format := params["format"]
+	if format == "svg" {
+		res.Header().Set("Content-Type", "image/svg+xml")
+		res.Header().Set("Cache-Control", "no-cache")
+
+	} else {
+		res.Header().Set("Content-Type", "application/json")
+	}
 	var param_matches []string
 	var score *Score
 	var err error
@@ -156,18 +173,14 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 
 	if score == nil {
 		if format == "svg" {
-			res.Header().Set("Content-Type", "image/svg+xml")
-			res.Write(GetScoreErrorAsSVG())
+			WriteSVGWithETag(res, GetScoreErrorAsSVG())
 		} else {
-			res.Header().Set("Content-Type", "application/json")
 			res.Write(GetScoreErrorAsJson(url_or_slug))
 		}
 	} else {
 		if format == "svg" {
-			res.Header().Set("Content-Type", "image/svg+xml")
-			res.Write(GetScoreResponseAsSVG(*score, url_or_slug))
+			WriteSVGWithETag(res, GetScoreResponseAsSVG(*score, url_or_slug))
 		} else {
-			res.Header().Set("Content-Type", "application/json")
 			res.Write(GetScoreResponseAsJson(*score, url_or_slug))
 		}
 	}

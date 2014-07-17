@@ -176,7 +176,7 @@ func (server *Server) GetScore(res http.ResponseWriter, req *http.Request, param
 	}
 
 	if err == nil {
-		url_or_slug = param_matches[0]
+		url_or_slug = strings.ToLower(param_matches[0])
 
 		if param_matches, ok = query_params["human_breakdown"]; ok {
 			human_breakdown = param_matches[0] == "true"

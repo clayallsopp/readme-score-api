@@ -12,6 +12,7 @@ import (
 	"github.com/soveran/redisurl"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -100,10 +101,10 @@ func (score Score) AsScoreTemplate() ScoreSVG {
 	}
 }
 
-func GetScoreResponseAsSVG(score_svg ScoreSVG) []byte {
-	var score_template_string = ""
-	var score_template = template.New("score template")
+var score_template_string = ""
+var score_template = template.New("score template")
 
+func GetScoreResponseAsSVG(score_svg ScoreSVG) []byte {
 	var doc bytes.Buffer
 	var err error
 
@@ -232,6 +233,7 @@ func (server *Server) GetScoreForUrlOrSlug(url_or_slug string, hit_cache bool) (
 	var score *Score
 	var err error
 	if score, err = server.GetCachedScoreForUrlOrSlug(url_or_slug); err != nil || !hit_cache {
+		log.Printf("Cache miss for %s", url_or_slug)
 		rubyCmd := exec.Command("./get_score.rb", url_or_slug)
 		var scoreOut []byte
 		if scoreOut, err = rubyCmd.Output(); err == nil {
